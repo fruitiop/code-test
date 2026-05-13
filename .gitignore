@@ -43,3 +43,8 @@ env/
 *.gif
 *.pdf
 *.svg
+
+# 办公文档
+*.docx
+*.ppt
+*.pptx
