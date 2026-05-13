@@ -366,12 +366,123 @@ plt.tight_layout()
 plt.savefig('range_vs_angle.png', dpi=150, bbox_inches='tight')
 print("\n已保存图像: range_vs_angle.png")
 
+# ==================== 6. 能量分析 (新增功能) ====================
+print("\n" + "=" * 60)
+print("能量分析: 动能、势能与机械能")
+print("=" * 60)
+
+
+def compute_energy(t, x, y, v0, theta, g, m, mode='ideal'):
+    """
+    计算动能、势能和总机械能
+    mode: 'ideal' 用解析式算速度, 'numerical' 用数值差分算速度
+    """
+    # 势能: Ep = m * g * y
+    Ep = m * g * y
+    
+    if mode == 'ideal':
+        # 理想情况: 解析速度
+        vx = v0 * np.cos(theta)
+        vy = v0 * np.sin(theta) - g * t
+        v = np.sqrt(vx**2 + vy**2)
+    else:
+        # 数值情况: 通过位置差分估算速度
+        v = np.zeros_like(t)
+        for i in range(len(t) - 1):
+            dt_step = t[i+1] - t[i]
+            if dt_step > 0:
+                v[i] = np.sqrt(((x[i+1]-x[i])/dt_step)**2 + ((y[i+1]-y[i])/dt_step)**2)
+            else:
+                v[i] = 0
+        v[-1] = v[-2] if len(v) > 1 else 0
+    
+    # 动能: Ek = 0.5 * m * v^2
+    Ek = 0.5 * m * v**2
+    
+    # 总机械能
+    E_total = Ek + Ep
+    
+    return Ek, Ep, E_total
+
+
+# 计算三种情况的能量
+Ek_ideal, Ep_ideal, E_total_ideal = compute_energy(
+    t_ideal, x_ideal, y_ideal, v0, theta, g, m, mode='ideal'
+)
+Ek_linear, Ep_linear, E_total_linear = compute_energy(
+    t_linear, x_linear, y_linear, v0, theta, g, m, mode='numerical'
+)
+Ek_quad, Ep_quad, E_total_quad = compute_energy(
+    t_quad, x_quad, y_quad, v0, theta, g, m, mode='numerical'
+)
+
+# 绘制能量分析图
+fig3, axes3 = plt.subplots(1, 3, figsize=(15, 4.5))
+fig3.suptitle('能量分析: 动能、势能与机械能随时间变化', fontsize=14, fontweight='bold')
+
+# 子图1: 动能
+ax_ek = axes3[0]
+ax_ek.plot(t_ideal, Ek_ideal, 'b-', linewidth=2, label='理想情况')
+ax_ek.plot(t_linear, Ek_linear, 'r--', linewidth=2, label='线性阻力')
+ax_ek.plot(t_quad, Ek_quad, 'g-.', linewidth=2, label='二次阻力')
+ax_ek.set_xlabel('时间 t (s)', fontsize=11)
+ax_ek.set_ylabel('动能 Ek (J)', fontsize=11)
+ax_ek.set_title('动能变化')
+ax_ek.legend()
+ax_ek.grid(True, alpha=0.3)
+
+# 子图2: 势能
+ax_ep = axes3[1]
+ax_ep.plot(t_ideal, Ep_ideal, 'b-', linewidth=2, label='理想情况')
+ax_ep.plot(t_linear, Ep_linear, 'r--', linewidth=2, label='线性阻力')
+ax_ep.plot(t_quad, Ep_quad, 'g-.', linewidth=2, label='二次阻力')
+ax_ep.set_xlabel('时间 t (s)', fontsize=11)
+ax_ep.set_ylabel('势能 Ep (J)', fontsize=11)
+ax_ep.set_title('势能变化')
+ax_ep.legend()
+ax_ep.grid(True, alpha=0.3)
+
+# 子图3: 总机械能
+ax_et = axes3[2]
+ax_et.plot(t_ideal, E_total_ideal, 'b-', linewidth=2, label='理想情况')
+ax_et.plot(t_linear, E_total_linear, 'r--', linewidth=2, label='线性阻力')
+ax_et.plot(t_quad, E_total_quad, 'g-.', linewidth=2, label='二次阻力')
+ax_et.set_xlabel('时间 t (s)', fontsize=11)
+ax_et.set_ylabel('总机械能 E (J)', fontsize=11)
+ax_et.set_title('总机械能变化')
+ax_et.legend()
+ax_et.grid(True, alpha=0.3)
+
+# 在总机械能图上标注能量耗散率
+E0 = 0.5 * m * v0**2  # 初始总能量
+if len(E_total_linear) > 0 and E0 > 0:
+    loss_linear = (E0 - E_total_linear[-1]) / E0 * 100
+    ax_et.text(0.55, 0.85, f'线性阻力耗散: {loss_linear:.1f}%',
+               transform=ax_et.transAxes, fontsize=9, color='red',
+               bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+if len(E_total_quad) > 0 and E0 > 0:
+    loss_quad = (E0 - E_total_quad[-1]) / E0 * 100
+    ax_et.text(0.55, 0.72, f'二次阻力耗散: {loss_quad:.1f}%',
+               transform=ax_et.transAxes, fontsize=9, color='green',
+               bbox=dict(boxstyle='round', facecolor='lightgreen', alpha=0.5))
+
+plt.tight_layout()
+plt.savefig('energy_analysis.png', dpi=150, bbox_inches='tight')
+print("已保存图像: energy_analysis.png")
+
+print(f"\n初始总机械能: {E0:.2f} J")
+print(f"理想情况落地时总能量: {E_total_ideal[-1]:.2f} J (守恒)")
+print(f"线性阻力落地时总能量: {E_total_linear[-1]:.2f} J (耗散 {(E0-E_total_linear[-1]):.2f} J)")
+print(f"二次阻力落地时总能量: {E_total_quad[-1]:.2f} J (耗散 {(E0-E_total_quad[-1]):.2f} J)")
+
+# ==================== 7. 分析结论 ====================
 print("\n" + "=" * 60)
 print("分析结论:")
 print(f"1. 理想情况下，最大射程在 45 度角度时达到")
 print(f"2. 有空气阻力时，最佳发射角度会降低到约 {angles[max_idx_quad]} 度")
 print(f"3. 空气阻力会显著减小射程和最大高度")
 print(f"4. 二次阻力（高速情况）比线性阻力影响更大")
+print(f"5. 理想情况机械能守恒，有阻力时机械能被耗散为热能")
 print("=" * 60)
 
 # 根据参数决定是否弹窗显示
